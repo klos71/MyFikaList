@@ -2,6 +2,22 @@ const sqlite3 = require("sqlite3").verbose();
 const db = new sqlite3.Database("./myDb");
 const express = require("express");
 var cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require("swagger-jsdoc");
+
+const options = {
+  explorer: true,
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Hello World",
+      version: "1.0.0",
+    },
+  },
+  apis: ["./index.js"], // files containing annotations as above
+};
+
+const openapiSpecification = swaggerJsdoc(options);
 
 db.serialize(() => {
   db.run(
@@ -13,7 +29,7 @@ const app = express();
 const port = 8080;
 app.use(express.json());
 app.use(cors());
-
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiSpecification));
 app.get("/", (req, res) => {
   res.send("Hello World");
 });
@@ -35,13 +51,35 @@ function getProductByID(id, cb) {
     });
   });
 }
-
+/**
+ * @openapi
+ * /product:
+ *   get:
+ *     description: Returns a list of products
+ *     responses:
+ *       200:
+ *         description:  Returns a list of products.
+ */
 app.get("/product", (req, res) => {
   getAllProducts((data) => {
     res.json(data);
   });
 });
 
+/**
+ * @openapi
+ * /product/{id}:
+ *   get:
+ *     parameters:
+ *         - in: path
+ *           name: id
+ *           schema:
+ *             type: string
+ *     description: Returns a list of products
+ *     responses:
+ *       200:
+ *         description:  Returns a list of products.
+ */
 app.get("/product/:id", (req, res) => {
   getProductByID(req.params.id, (data) => {
     if (data === undefined) {
