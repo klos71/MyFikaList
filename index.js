@@ -34,6 +34,31 @@ app.get("/", (req, res) => {
   res.send("Hello World");
 });
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Product:
+ *       type: object
+ *       required:
+ *         - name
+ *         - description
+ *       properties:
+ *         id:
+ *           type: number
+ *           description: The auto-generated id of the product
+ *         name:
+ *           type: string
+ *           description: The name of the product
+ *         description:
+ *           type: string
+ *           description: The product description
+ *       example:
+ *         id: 55
+ *         name: Cheddar
+ *         description: Probably the best cheese in the world
+ */
+
 function getAllProducts(cb) {
   db.serialize(() => {
     db.all("SELECT * FROM products", (err, row) => {
@@ -90,7 +115,28 @@ app.get("/product/:id", (req, res) => {
     res.json(data);
   });
 });
-
+/**
+ * @swagger
+ * /product:
+ *   post:
+ *     summary: Create a new product
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Product'
+ *     responses:
+ *       200:
+ *         description: The created product.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       500:
+ *         description: Some server error
+ *
+ */
 app.post("/product", (req, res) => {
   if (typeof req.body.name !== "string") {
     res.status(502).json({ error: "Name must be a string" });
