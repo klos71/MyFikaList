@@ -38,11 +38,8 @@ app.get("/", (req, res) => {
  * @swagger
  * components:
  *   schemas:
- *     Product:
+ *     ProductGetDTO:
  *       type: object
- *       required:
- *         - name
- *         - description
  *       properties:
  *         id:
  *           type: number
@@ -55,6 +52,27 @@ app.get("/", (req, res) => {
  *           description: The product description
  *       example:
  *         id: 55
+ *         name: Cheddar
+ *         description: Probably the best cheese in the world
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     ProductPostDTO:
+ *       type: object
+ *       required:
+ *         - name
+ *         - description
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The name of the product
+ *         description:
+ *           type: string
+ *           description: The product description
+ *       example:
  *         name: Cheddar
  *         description: Probably the best cheese in the world
  */
@@ -76,14 +94,26 @@ function getProductByID(id, cb) {
     });
   });
 }
+
+function deleteProductByID(id, cb) {
+  db.serialize(() => {
+    db.get(`DELETE FROM products WHERE id = ${id}`, (err) => {
+      if (err) console.error(err);
+      cb();
+    });
+  });
+}
+
 /**
- * @openapi
+ * @swagger
  * /product:
  *   get:
- *     description: Returns a list of products
+ *     summary: get a list of available products
  *     responses:
  *       200:
- *         description:  Returns a list of products.
+ *         description: The list of products.
+ *       500:
+ *         description: Some server error
  */
 app.get("/product", (req, res) => {
   getAllProducts((data) => {
@@ -100,10 +130,15 @@ app.get("/product", (req, res) => {
  *           name: id
  *           schema:
  *             type: string
- *     description: Returns a list of products
+ *     summary: get a product by ID
+ *     description: Returns a product
  *     responses:
  *       200:
- *         description:  Returns a list of products.
+ *         description:  Returns a specific product.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProductGetDTO'
  */
 app.get("/product/:id", (req, res) => {
   getProductByID(req.params.id, (data) => {
@@ -125,14 +160,14 @@ app.get("/product/:id", (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Product'
+ *             $ref: '#/components/schemas/ProductPostDTO'
  *     responses:
  *       200:
  *         description: The created product.
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Product'
+ *               $ref: '#/components/schemas/ProductGetDTO'
  *       500:
  *         description: Some server error
  *
@@ -157,25 +192,35 @@ app.post("/product", (req, res) => {
       return;
     }
   }
-  const stmt = db.prepare(
-    "INSERT INTO products (name, description) VALUES (?,?)"
-  );
-  stmt.run(req.body.name, req.body.description);
-
-  res.status(201).json(req.body);
+  const stmt = db
+    .prepare("INSERT INTO products (name, description) VALUES (?,?)")
+    .run(req.body.name, req.body.description, (err) =>
+      res.status(201).json({
+        name: req.body.name,
+        description: req.body.description,
+        id: stmt.lastID,
+      })
+    );
 });
-
-app.get("/mock", (req, res) => {
-  const stmt = db.prepare(
-    "INSERT INTO products (name, description) VALUES (?,?)"
-  );
-
-  for (let i = 0; i < 10; i++) {
-    stmt.run(`test ${i}`, "this is a description");
-  }
-
-  stmt.finalize();
-  res.json(true);
+/**
+ * @openapi
+ * /product/{id}:
+ *   delete:
+ *     parameters:
+ *         - in: path
+ *           name: id
+ *           schema:
+ *             type: string
+ *     summary: delete a product by ID
+ *     description: removes a product with supplied ID
+ *     responses:
+ *       204:
+ *         description:  No Content
+ */
+app.delete("/product/:id", (req, res) => {
+  deleteProductByID(req.params.id, () => {
+    res.status(204).json(true);
+  });
 });
 
 app.listen(port, () => {
